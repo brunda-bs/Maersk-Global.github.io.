@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  prometheus:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2022-05-04T16:06:56.893854+05:30"
+    description: prometheus
+    digest: c264b2ab7a6a027f813972af07eaa717f8c5a876f5c98a6c3750122c70e86b92
+    name: prometheus
+    type: application
+    urls:
+    - https://maersk-global.github.io/service-mesh-helm-charts/prometheus-1.0.0.tgz
+    version: 1.0.0
+generated: "2022-05-04T16:06:56.893295+05:30"

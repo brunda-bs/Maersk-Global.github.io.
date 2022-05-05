@@ -1,0 +1,34 @@
+name: Build otel trace helm chart
+
+on:
+  workflow_dispatch:
+
+env:
+  ACR_NAME:  mskmeshsharedgcore.azurecr.io
+  ACR_REPO_NAME: otel-trace
+
+jobs:
+  build:
+    name: publish acr
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v2
+        name: checkout repo
+      
+      - name: install helm
+        uses: Azure/setup-helm@v1
+        with:
+          version: latest
+      - name: login to acr using helm
+        run: |
+          echo ${{ secrets.DESTINATION_REGISTRY_PASSWORD_MESH}} | helm registry login mskmeshsharedgcore.azurecr.io --username ${{ secrets.DESTINATION_REGISTRY_USERNAME_MESH }} --password-stdin
+
+      - name: save helm chart to local registry
+        run: |
+          cd $GITHUB_WORKSPACE/charts/otel-trace/
+          helm package .
+      
+      - name: publish chart to acr
+        run: |
+          helm push $GITHUB_WORKSPACE/charts/otel-trace/*.tgz  oci://mskmeshsharedgcore.azurecr.io     

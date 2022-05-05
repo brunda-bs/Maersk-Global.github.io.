@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metrics-collector-config
+data:
+  collector.yaml: |-
+    receivers:
+        prometheus_simple:
+            collection_interval: 10s
+            endpoint: {{ required "A valid .Values.receiverEndpoint entry required!" .Values.receiverEndpoint }}
+            metrics_path: /metrics
+        otlp:
+            protocols:
+                grpc: null
+    processors:
+        batch: null
+        batch/2:
+            timeout: 10s
+            send_batch_size: 1000
+            send_batch_max_size: 2000
+        k8sattributes:
+        memory_limiter:
+            # 80% of maximum memory up to 2G
+            limit_mib: 1500
+            # 25% of limit up to 2G
+            spike_limit_mib: 512
+            check_interval: 5s
+
+    exporters:
+        datadog:
+            hostname: kuma-cp-metrics-${CLUSTER_NAME}
+            api:
+                key: "${DD_API_KEY}"
+                site: datadoghq.eu
+            tags:
+                - app:servicemesh
+                - env:${ENVIRONMENT_NAME}
+                - zone:${CLUSTER_NAME}
+                - service:kuma
+                - business_platform:servicemesh
+                - brand:maersk
+                - team:purplesea
+        prometheusremotewrite:
+            endpoint: "https://metrics.pensieve.maersk-digital.net/api/v1/push"
+            auth:
+                authenticator: oauth2client
+            external_labels:
+                app: servicemesh
+                env: ${ENVIRONMENT_NAME}
+                zone: ${CLUSTER_NAME}
+                product_id: servicemesh
+                provider: ${CLOUD_NAME}
+                region: ${REGION_NAME}
+    extensions:
+        # Health Check extension enables an HTTP url that can be probed to check the status of the OpenTelemetry Collector. This extension can be used as a liveness and/or readiness probe on Kubernetes.
+        # https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/extension/healthcheckextension/README.md
+        health_check: null
+        health_check/1:
+            endpoint: 0.0.0.0:13133
+        # Performance Profiler extension enables the golang net/http/pprof endpoint. This is typically used by developers to collect performance profiles and investigate issues with the service
+        # https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/extension/pprofextension/README.md
+        pprof: null
+        pprof/1:
+            endpoint: 0.0.0.0:1777
+            block_profile_fraction: 3
+            mutex_profile_fraction: 5
+        memory_ballast:
+            size_mib: 512
+        zpages: {}
+        oauth2client:
+            client_id: "${CLIENT_ID}"
+            client_secret: "${CLIENT_SECRET}"
+            token_url: https://login.microsoftonline.com/05d75c05-fa1a-42e7-9cf1-eb416c396f2d/oauth2/v2.0/token
+            scopes: ["api://ingestion.pensieve/.default"]
+    service:
+        extensions:
+            - health_check/1
+            - pprof/1
+            - zpages
+            - oauth2client
+        pipelines:
+            metrics:
+                receivers:
+                    - prometheus_simple
+                processors:
+                    - memory_limiter
+                    - batch/2
+                    - k8sattributes
+                exporters:
+                    - datadog
+                    - prometheusremotewrite

@@ -1,0 +1,10 @@
+# replicas: 1
+# image: otel/opentelemetry-collector-contrib:0.45.0
+# imagePullPolicy: Always
+# resources:
+#   requests:
+#     cpu: 500m
+#     memory: 3G
+#   limits:
+#     cpu: 500m
+#     memory: 3G
